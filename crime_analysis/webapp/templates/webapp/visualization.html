@@ -1,0 +1,17 @@
+{% extends "webapp/base.html" %}
+
+{% block content %}
+<h2>Visualizations</h2>
+
+{% if visualized %}
+    {% if charts %}
+        <img src="data:image/png;base64,{{ charts.crime_timeseries }}">
+        {% if charts.feature_importances %}
+            <img src="data:image/png;base64,{{ charts.feature_importances }}">
+        {% endif %}
+        {% if charts.predictions_vs_actual %}
+            <img src="data:image/png;base64,{{ charts.predictions_vs_actual }}">
+        {% endif %}
+    {% endif %}
+{% endif %}
+{% endblock %}

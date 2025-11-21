@@ -1,0 +1,36 @@
+{% extends "webapp/base.html" %}
+
+{% block content %}
+<h2>Crime Analysis Dashboard</h2>
+
+<!-- 1. Upload dataset -->
+<h3>1. Upload Dataset</h3>
+<form method="post" enctype="multipart/form-data" action="{% url 'upload-dataset' %}">
+    {% csrf_token %}
+    <input type="file" name="file" required>
+    <button type="submit">Upload</button>
+</form>
+
+<!-- 2. Start Analysis -->
+{% if df_loaded %}
+<h3>2. Start Analysis</h3>
+<form method="post" action="{% url 'start-analysis' %}">
+    {% csrf_token %}
+    <input type="hidden" name="dataset_id" value="{{ dataset_id }}">
+    <button type="submit">Run Preprocessing & Train Models</button>
+</form>
+{% endif %}
+
+<!-- 3. Evaluation -->
+{% if preprocessed %}
+<h3>3. Evaluation</h3>
+<a href="{% url 'evaluation' dataset_id %}">View Model Metrics</a>
+{% endif %}
+
+<!-- 4. Visualizations -->
+{% if preprocessed %}
+<h3>4. Visualizations</h3>
+<a href="{% url 'visualization' dataset_id %}">View Charts</a>
+{% endif %}
+
+{% endblock %}

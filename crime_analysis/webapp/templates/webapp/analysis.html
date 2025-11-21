@@ -1,0 +1,20 @@
+{% extends "webapp/base.html" %}
+
+{% block content %}
+<h2>Analysis</h2>
+
+{% if df_loaded %}
+<form method="post">
+    {% csrf_token %}
+    <button name="preprocess" type="submit">Run Preprocessing & Train Models</button>
+</form>
+{% endif %}
+
+{% if preprocessed %}
+<p style="color:green;">Preprocessing & Training completed!</p>
+<a href="{% url 'evaluation' dataset_id %}">View Evaluation</a> |
+<a href="{% url 'visualization' dataset_id %}">View Visualizations</a>
+{% endif %}
+
+{% endblock %}
+

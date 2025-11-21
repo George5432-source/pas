@@ -1,0 +1,10 @@
+{% extends "webapp/base.html" %}
+
+{% block content %}
+<h2>Model Evaluation</h2>
+
+{% if evaluated %}
+    <h3>Metrics</h3>
+    {{ metrics_table|safe }}
+{% endif %}
+{% endblock %}

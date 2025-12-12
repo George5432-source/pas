@@ -41,9 +41,13 @@ from crime_analysis.database.load import save_to_db
 #         })
 
 
+
+
+DATASETS = {}  # словарь для хранения датасетов в памяти
+
 class UploadDatasetAPIView(APIView):
     """
-    Upload CSV/Parquet file and store the raw dataframe in memory.
+    Upload CSV/Parquet file, convert to Parquet, and store in memory.
     """
 
     def post(self, request):
@@ -53,7 +57,7 @@ class UploadDatasetAPIView(APIView):
 
         file = serializer.validated_data["file"]
 
-        # Read file
+        # Read file into DataFrame
         filename = file.name.lower()
         if filename.endswith(".csv"):
             df = pd.read_csv(file)
@@ -62,12 +66,17 @@ class UploadDatasetAPIView(APIView):
         else:
             return Response({"error": "Unsupported file format"}, status=400)
 
+        # Convert to Parquet in-memory
+        parquet_buffer = io.BytesIO()
+        df.to_parquet(parquet_buffer, index=False)
+        parquet_buffer.seek(0)  # обязательно сбросить курсор
+
         # Assign dataset ID
         dataset_id = len(DATASETS) + 1
 
-        # Store ONLY raw dataframe initially
+        # Store raw Parquet bytes instead of CSV/DataFrame
         DATASETS[dataset_id] = {
-            "raw_df": df,
+            "raw_parquet": parquet_buffer.read(),  # можно позже читать через pd.read_parquet(io.BytesIO(...))
             "processed_df": None,
             "results": None,
         }
@@ -79,6 +88,7 @@ class UploadDatasetAPIView(APIView):
             {"dataset_id": dataset_id, "rows": df.shape[0]},
             status=201
         )
+
 
 
 class StartAnalysisAPIView(APIView):

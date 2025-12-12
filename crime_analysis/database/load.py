@@ -1,43 +1,50 @@
+# load_duckdb.py
+import os
+from typing import Optional
 import pandas as pd
-from .models import CrimeRecord
+import duckdb
 
-def save_to_db(df: pd.DataFrame):
+
+def save_to_duckdb(
+    df: pd.DataFrame,
+    db_path: Optional[str] = None,
+    table_name: str = "crime_records",
+    if_exists: str = "append"
+) -> int:
     """
-    Save a preprocessed/feature-engineered DataFrame into Django DB.
+    Save preprocessed DataFrame into DuckDB.
+
+    :param df: preprocessed DataFrame (index should be datetime or include 'Date' column)
+    :param db_path: path to DuckDB file; defaults to in-memory if None
+    :param table_name: target table name in DuckDB
+    :param if_exists: 'replace', 'append', or 'fail'
+    :return: number of inserted rows
     """
-    records = []
+    db_path = db_path or ":memory:"  # in-memory if not specified
 
-    for idx, row in df.iterrows():
-        rec = CrimeRecord(
-            date=idx,
-            primary_type=str(row['Primary Type']),
-            arrest=row.get('Arrest'),
-            domestic=row.get('Domestic'),
-            month=row.get('Month'),
-            hour=row.get('Hour'),
-            minute=row.get('Minute'),
-            day_of_week=row.get('DayOfWeek'),
-            is_weekend=bool(row.get('is_weekend')),
-            is_night=bool(row.get('is_night')),
-            season=int(row.get('Season')) if row.get('Season') is not None else None,
-            is_violent_crime=bool(row.get('is_violent_crime')),
-            crime_count=int(row.get('crime_count')) if row.get('crime_count') is not None else None,
-            lag_1h=row.get('lag_1h'),
-            lag_2h=row.get('lag_2h'),
-            lag_3h=row.get('lag_3h'),
-            lag_v_1h=row.get('lag_v_1h'),
-            lag_v_2h=row.get('lag_v_2h'),
-            lag_v_3h=row.get('lag_v_3h'),
-            rolling_3h=row.get('rolling_3h'),
-            rolling_v_3h=row.get('rolling_v_3h'),
-            hour_sin=row.get('Hour_sin'),
-            hour_cos=row.get('Hour_cos'),
-            day_sin=row.get('Day_sin'),
-            day_cos=row.get('Day_cos'),
-            primary_type_code=int(row.get('primary_type_code')) if row.get('primary_type_code') is not None else None,
-        )
-        records.append(rec)
+    # Connect to DuckDB
+    con = duckdb.connect(database=db_path)
 
-    # Bulk create for efficiency
-    CrimeRecord.objects.bulk_create(records)
+    # Reset index if it's a datetime index and ensure column name is 'date'
+    if isinstance(df.index, pd.DatetimeIndex):
+        df = df.reset_index().rename(columns={"index": "date"})
+    elif "Date" in df.columns:
+        df = df.rename(columns={"Date": "date"})
+    else:
+        raise ValueError("DataFrame must have a DateTime index or 'Date' column")
+
+    # DuckDB can infer types automatically, so we can just use to_sql
+    df.to_sql(table_name, con, if_exists=if_exists, index=False)
+
+    inserted_rows = len(df)
+    con.close()
+    return inserted_rows
+
+
+# Example usage
+if __name__ == "__main__":
+    df = pd.read_csv("chicago_crimes.csv", parse_dates=["Date"])
+    # preprocess df as before...
+    n = save_to_duckdb(df, db_path="chicago_crimes.duckdb")
+    print(f"Inserted {n} rows into DuckDB")
 
